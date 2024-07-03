@@ -25,15 +25,25 @@ auto-compaction-mode: revision
 auto-compaction-retention: '1000'
 EOF
 
+    cat << EOF > user.yaml
+# Extra config to override default milvus.yaml
+etcd:
+  use:
+    embed: true
+  data:
+    dir: /var/lib/milvus/etcd
+  config:
+    path: /milvus/configs/embedEtcd.yaml
+common:
+  storageType: local
+EOF
+
     sudo docker run -d \
         --name milvus-standalone \
         --security-opt seccomp:unconfined \
-        -e ETCD_USE_EMBED=true \
-        -e ETCD_DATA_DIR=/var/lib/milvus/etcd \
-        -e ETCD_CONFIG_PATH=/milvus/configs/embedEtcd.yaml \
-        -e COMMON_STORAGETYPE=local \
         -v $(pwd)/volumes/milvus:/var/lib/milvus \
         -v $(pwd)/embedEtcd.yaml:/milvus/configs/embedEtcd.yaml \
+        -v $(pwd)/user.yaml:/milvus/configs/user.yaml \
         -p 19530:19530 \
         -p 9091:9091 \
         -p 2379:2379 \
@@ -112,11 +122,16 @@ delete() {
     fi
     sudo rm -rf $(pwd)/volumes
     sudo rm -rf $(pwd)/embedEtcd.yaml
+    sudo rm -rf $(pwd)/user.yaml
     echo "Delete successfully."
 }
 
 
 case $1 in
+    restart)
+        stop
+        start
+        ;;
     start)
         start
         ;;
@@ -127,6 +142,6 @@ case $1 in
         delete
         ;;
     *)
-        echo "please use bash standalone_embed.sh start|stop|delete"
+        echo "please use bash standalone_embed.sh restart|start|stop|delete"
         ;;
 esac
